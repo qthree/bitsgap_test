@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use anyhow::{bail, Context as _};
+use anyhow::{Context as _, bail};
 use reqwest::Url;
 
 use super::AuthMethod;
@@ -8,7 +8,9 @@ use super::AuthMethod;
 /// return UNIX timestamp in milliseconds since 'Thu Jan 01 1970 00:00:00.000'
 /// u64 is enough for another ~585 million years
 fn timestamp() -> u64 {
-    std::time::UNIX_EPOCH.elapsed().map_or(0, |ts| ts.as_millis().try_into().unwrap_or(u64::MAX))
+    std::time::UNIX_EPOCH
+        .elapsed()
+        .map_or(0, |ts| ts.as_millis().try_into().unwrap_or(u64::MAX))
 }
 
 // TODO: optimize by making query sorted in the first place, in send_request?
@@ -24,7 +26,7 @@ fn timestamped_sorted_params(url: &Url, timestamp: &str) -> String {
 }
 
 mod hmac_sha256 {
-    use base64::prelude::{Engine as _, BASE64_STANDARD};
+    use base64::prelude::{BASE64_STANDARD, Engine as _};
     use hmac::digest::Mac as _;
 
     type HmacSha256 = hmac::Hmac<sha2::Sha256>;
@@ -32,10 +34,11 @@ mod hmac_sha256 {
     // TODO: reuse buffers?
     pub(super) fn sign_payload(payload: &str, secret_key: &str) -> String {
         // call hash function
-        let mut mac = HmacSha256::new_from_slice(secret_key.as_bytes()).expect("HMAC can take key of any size");
+        let mut mac = HmacSha256::new_from_slice(secret_key.as_bytes())
+            .expect("HMAC can take key of any size");
         mac.update(payload.as_bytes());
         let mac_output = mac.finalize();
-    
+
         // encode hash with base64
         BASE64_STANDARD.encode(mac_output.into_bytes())
     }
@@ -44,14 +47,17 @@ mod hmac_sha256 {
 impl AuthMethod {
     pub(super) fn apply(&self, req: &mut reqwest::Request) -> anyhow::Result<()> {
         match self {
-            AuthMethod::HmacSha256 { api_key, secret_key } => {
+            AuthMethod::HmacSha256 {
+                api_key,
+                secret_key,
+            } => {
                 let method = req.method().as_str();
 
                 // TODO: implement POST, PUT, DELETE
                 if method != "GET" {
                     bail!("only GET method implemented for HmacSha256 authentication mode yet");
                 }
-                
+
                 // url without authority, domain and query
                 let path = req.url().path();
 
@@ -64,10 +70,21 @@ impl AuthMethod {
                 let sign = hmac_sha256::sign_payload(&payload, secret_key);
 
                 let headers = req.headers_mut();
-                headers.append("key", api_key.try_into().context("header value from public key")?);
-                headers.append("signature", sign.try_into().context("header value from signature")?);
-                headers.append("signTimestamp", timestamp.try_into().context("header value from timestamp")?);
-            },
+                headers.append(
+                    "key",
+                    api_key.try_into().context("header value from public key")?,
+                );
+                headers.append(
+                    "signature",
+                    sign.try_into().context("header value from signature")?,
+                );
+                headers.append(
+                    "signTimestamp",
+                    timestamp
+                        .try_into()
+                        .context("header value from timestamp")?,
+                );
+            }
         }
         Ok(())
     }
