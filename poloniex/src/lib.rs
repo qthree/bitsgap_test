@@ -1,11 +1,6 @@
-use anyhow::bail;
-use bitsgap_shared::{
-    interval::{Interval, IntervalKind, SupportedIntervals},
-    utils::{
-        Has,
-        url::{BuildUrl, UrlBuilder},
-    },
-};
+use bitsgap_shared::interval::{IntervalKind, SupportedIntervals};
+
+pub mod candles;
 
 pub const TEST_SYMBOLS: &[&str] = &["BTC_USDT", "TRX_USDT", "ETH_USDT", "DOGE_USDT", "BCH_USDT"];
 
@@ -37,48 +32,15 @@ pub fn supported_intervals() -> anyhow::Result<SupportedIntervals> {
         .with(IntervalKind::Month, [(1, "MONTH_1")])
 }
 
-pub struct CandlesRequest<S> {
-    /// symbol name
-    symbol: S,
-    /// the unit of time to aggregate data by
-    interval: Interval,
-    /// maximum number of records returned. The default value is 100 and the max value is 500
-    limit: Option<u16>,
-    /// filters by time
-    /// the default value is 0
-    start_time: Option<u64>,
-    /// filters by time
-    /// the default value is current time
-    end_time: Option<u64>,
-}
-
-impl<S: AsRef<str>, C: Has<SupportedIntervals>> BuildUrl<C> for CandlesRequest<S> {
-    fn build_url(&self, url_builder: &mut UrlBuilder, context: &C) -> anyhow::Result<()> {
-        url_builder.add_path_segments(&["markets", self.symbol.as_ref(), "candles"])?;
-
-        let supported_intervals = context.give();
-        let Some(interval_alias) = supported_intervals.to_alias(self.interval) else {
-            bail!("unsupported interval")
-        };
-        let mut query_builder = url_builder.query_builder()?;
-
-        query_builder.add_pair("interval", interval_alias);
-        if let Some(limit) = self.limit {
-            query_builder.display_pair("limit", &limit)?;
-        }
-        if let Some(start_time) = self.start_time {
-            query_builder.display_pair("startTime", &start_time)?;
-        }
-        if let Some(end_time) = self.end_time {
-            query_builder.display_pair("endTime", &end_time)?;
-        }
-        Ok(())
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use bitsgap_shared::{ApiConfig, ApiFactory, ApiRequester, AuthMethod, utils::url::BuildUrl};
+    use core::fmt;
+
+    use bitsgap_shared::{
+        ApiConfig, ApiFactory, ApiRequester, AuthMethod, Request,
+        interval::Interval,
+        utils::{Has, url::BuildUrl},
+    };
 
     use super::*;
 
@@ -110,20 +72,29 @@ mod tests {
         )
     }
 
-    async fn poloniex_get_and_print(path: impl BuildUrl<Context>) {
-        let markets: serde_json::Value = poloniex_requester().get_json(path).await.unwrap();
-        println!("{}", serde_json::to_string_pretty(&markets).unwrap());
+    async fn poloniex_get_and_print_json(path: impl BuildUrl<Context>) {
+        let value: serde_json::Value = poloniex_requester().get_json(path).await.unwrap();
+        println!("{}", serde_json::to_string_pretty(&value).unwrap());
+    }
+
+    async fn poloniex_get_response_and_print_debug<
+        R: Request<Response: serde::de::DeserializeOwned + fmt::Debug> + BuildUrl<Context>,
+    >(
+        path: R,
+    ) {
+        let response = poloniex_requester().get_response(path).await.unwrap();
+        println!("{response:#?}");
     }
 
     #[tokio::test]
     async fn get_poloniex_markets() {
-        poloniex_get_and_print("markets").await;
+        poloniex_get_and_print_json("markets").await;
     }
 
     #[tokio::test]
     async fn get_poloniex_candles() {
         for symbol in super::TEST_SYMBOLS {
-            let req = CandlesRequest {
+            let req = candles::CandlesRequest {
                 symbol,
                 interval: Interval {
                     kind: IntervalKind::Minute,
@@ -133,14 +104,14 @@ mod tests {
                 start_time: Some(1738700743 * 1000),
                 end_time: Some(1738770743 * 1000),
             };
-            poloniex_get_and_print(req).await;
+            poloniex_get_response_and_print_debug(req).await;
         }
     }
 
     #[test]
     fn test_poliniex_candles_url() {
         let url = poloniex_requester()
-            .build_url(CandlesRequest {
+            .build_url(candles::CandlesRequest {
                 symbol: "BTC_USDT",
                 interval: Interval {
                     kind: IntervalKind::Minute,

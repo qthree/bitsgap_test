@@ -238,3 +238,25 @@
   ...
 ]
 ```
+- парсинг ответа `candles` в специфичную для биржи структуру работает
+```json
+[
+    CandlesResponse {
+        low: "0.22485",
+        high: "0.22485",
+        open: "0.22485",
+        close: "0.22485",
+        amount: "3635.01571",
+        quantity: "16166.403",
+        buy_taker_amount: "1849.58147",
+        buy_taker_quantity: "8225.846",
+        trade_count: 296,
+        timestamp: 1738770240221,
+        weighted_average: "0.22485",
+        interval: "MINUTE_1",
+        start_time: 1738770180000,
+        close_time: 1738770239999,
+    },
+    ...
+]
+```

@@ -102,4 +102,15 @@ impl<C> ApiRequester<C> {
         let json = self.get_string(build_url).await?;
         serde_json::from_str(&json).context("parse response as JSON")
     }
+
+    pub async fn get_response<R: Request<Response: serde::de::DeserializeOwned> + BuildUrl<C>>(
+        &self,
+        build_url: R,
+    ) -> anyhow::Result<R::Response> {
+        self.get_json(build_url).await
+    }
+}
+
+pub trait Request {
+    type Response;
 }
