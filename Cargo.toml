@@ -3,12 +3,19 @@ resolver = "2"
 members = ["shared", "poloniex", "scraper"]
 
 [workspace.dependencies]
+bitsgap_shared = { path = "./shared" }
+bitsgap_poloniex = { path = "./poloniex" }
+
 anyhow = "1"
+arrayvec = "0.7"
 base64 = "0.22"
+equivalent = "1"
 form_urlencoded = "1"
 hmac = "0.12"
 reqwest = "0.12"
-serde = { version = "1", features = ["derive"] }
+serde = "1"
 serde_json = "1"
 sha2 = "0.10"
+smallstr = "0.3"
 tokio = "1"
+url = "2"

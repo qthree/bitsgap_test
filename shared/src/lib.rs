@@ -3,8 +3,11 @@ use std::sync::Arc;
 use anyhow::Context;
 use reqwest::{Url, header::CONTENT_TYPE};
 use serde::de::DeserializeOwned;
+use utils::url::{BuildUrl, UrlBuilder};
 
-mod auth;
+pub mod auth;
+pub mod interval;
+pub mod utils;
 
 #[derive(Debug)]
 pub struct ApiFactory {
@@ -38,34 +41,40 @@ impl ApiFactory {
         }
     }
 
-    pub fn make_requester(&self, config: impl Into<Arc<ApiConfig>>) -> ApiRequester {
+    pub fn make_requester<C>(
+        &self,
+        config: impl Into<Arc<ApiConfig>>,
+        context: C,
+    ) -> ApiRequester<C> {
         //let headers = Default::default();
         ApiRequester {
             config: config.into(),
             client: self.client.clone(),
+            context,
             //headers,
         }
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct ApiRequester {
+pub struct ApiRequester<C> {
     config: Arc<ApiConfig>,
     client: reqwest::Client,
+    context: C,
     //headers: HeaderMap,
 }
 
-impl ApiRequester {
+impl<C> ApiRequester<C> {
+    pub fn build_url(&self, with: impl BuildUrl<C>) -> anyhow::Result<Url> {
+        UrlBuilder::build(&self.config.base_url, with, &self.context)
+    }
+
     async fn send_request(
         &self,
         method: reqwest::Method,
-        path: &str,
+        build_url: impl BuildUrl<C>,
     ) -> anyhow::Result<reqwest::Response> {
-        let url = self
-            .config
-            .base_url
-            .join(path)
-            .context("join base url and path")?;
+        let url = self.build_url(build_url).context("build url")?;
 
         let mut req = self
             .client
@@ -80,34 +89,17 @@ impl ApiRequester {
         self.client.execute(req).await.context("execute request")
     }
 
-    async fn get_string(&self, path: &str) -> anyhow::Result<String> {
-        let res = self.send_request(reqwest::Method::GET, path).await?;
+    async fn get_string(&self, build_url: impl BuildUrl<C>) -> anyhow::Result<String> {
+        let res = self.send_request(reqwest::Method::GET, build_url).await?;
         // we don't use Response::json to separate different kinds of errors
         res.text().await.context("receive JSON response")
     }
 
-    pub async fn get_json<T: DeserializeOwned>(&self, path: &str) -> anyhow::Result<T> {
-        let json = self.get_string(path).await?;
+    pub async fn get_json<T: DeserializeOwned>(
+        &self,
+        build_url: impl BuildUrl<C>,
+    ) -> anyhow::Result<T> {
+        let json = self.get_string(build_url).await?;
         serde_json::from_str(&json).context("parse response as JSON")
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_api_requester() {
-        let api_key = std::env::var("API_KEY").expect("API_KEY env var");
-        let secret_key = std::env::var("SECRET_KEY").expect("SECRET_KEY env var");
-        let requester = ApiFactory::new().make_requester(ApiConfig {
-            base_url: "https://api.poloniex.com".try_into().unwrap(),
-            auth: AuthMethod::HmacSha256 {
-                api_key,
-                secret_key,
-            },
-        });
-        let markets: serde_json::Value = requester.get_json("markets").await.unwrap();
-        println!("{}", serde_json::to_string_pretty(&markets).unwrap());
     }
 }
