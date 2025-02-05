@@ -1,7 +1,8 @@
-use anyhow::bail;
+use anyhow::{Context, bail};
 use bitsgap_shared::{
     Request,
-    interval::{Interval, SupportedIntervals},
+    interval::{DatabaseIntervals, ExchangeIntervals, Interval},
+    kline::{Kline, VBS},
     utils::{
         Has,
         url::{BuildUrl, UrlBuilder},
@@ -27,7 +28,7 @@ impl<S> Request for CandlesRequest<S> {
     type Response = Vec<CandlesResponse>;
 }
 
-impl<S: AsRef<str>, C: Has<SupportedIntervals>> BuildUrl<C> for CandlesRequest<S> {
+impl<S: AsRef<str>, C: Has<ExchangeIntervals>> BuildUrl<C> for CandlesRequest<S> {
     fn build_url(&self, url_builder: &mut UrlBuilder, context: &C) -> anyhow::Result<()> {
         url_builder.add_path_segments(&["markets", self.symbol.as_ref(), "candles"])?;
 
@@ -81,4 +82,76 @@ pub struct CandlesResponse {
     pub start_time: u64,
     /// close time of interval
     pub close_time: u64,
+}
+
+impl CandlesResponse {
+    // TODO: refactor into trait, something like `ToInternal`
+    pub fn kline<C: Has<DatabaseIntervals>, S: AsRef<str>>(
+        &self,
+        request: &CandlesRequest<S>,
+        context: &C,
+    ) -> anyhow::Result<Kline> {
+        // TODO: check if intervals in request and response match?
+        let CandlesRequest {
+            ref symbol,
+            interval,
+            ..
+        } = *request;
+        let CandlesResponse {
+            low,
+            high,
+            open,
+            close,
+            amount,
+            quantity,
+            buy_taker_amount,
+            buy_taker_quantity,
+            start_time,
+            ..
+        } = self;
+
+        // Right now, it does match to database format from test task, but we need think about converting it in the futures
+        let pair = symbol.as_ref().into();
+
+        // TODO: is better store it as Interval here? and convert only when saving to database?
+        let time_frame = context
+            .give()
+            .to_alias(interval)
+            .context("convert interval to databse time frame format")?
+            .into();
+
+        // TODO: make type which deserializes as String, but stores in-memory as number, use it in CandlesResponse
+        // TODO: verify numbers to be positive and finite
+        let amount: f64 = amount.parse().context("parse amount")?;
+        let quantity: f64 = quantity.parse().context("parse quantity")?;
+        let buy_taker_amount: f64 = buy_taker_amount.parse().context("parse buy taker amount")?;
+        let buy_taker_quantity: f64 = buy_taker_quantity
+            .parse()
+            .context("parse buy taker quantity")?;
+
+        let volume_bs = VBS {
+            buy_base: buy_taker_quantity,
+            sell_base: quantity - buy_taker_quantity,
+            buy_quote: buy_taker_amount,
+            sell_quote: amount - buy_taker_amount,
+        };
+        if volume_bs.sell_base < 0.0 {
+            bail!("sell base volume is negative");
+        }
+        if volume_bs.sell_quote < 0.0 {
+            bail!("sell quote volume is negative");
+        }
+
+        Ok(Kline {
+            pair,
+            time_frame,
+            o: open.parse().context("parse open price")?,
+            h: high.parse().context("parse open price")?,
+            l: low.parse().context("parse open price")?,
+            c: close.parse().context("parse open price")?,
+            utc_begin: (*start_time).try_into().context("convert start time")?,
+            // TODO: verify if it's correct
+            volume_bs,
+        })
+    }
 }

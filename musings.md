@@ -162,10 +162,14 @@
 # 2025-02-05
 
 ## TODO
-- Запрос KL и RT по REST API
-- Написать или [сгенерировать](https://transform.tools/json-to-rust-serde) специфичные для poloniex типы, для парсинга ответа REST ручек.
-- Скопировать из ТЗ универсальные типы, добавить конверсию из специфичных типов
-- Заимплементить получение данных по WS
+- [x] Запрос KL ~~и RT~~ по REST API
+- [ ] Написать или [сгенерировать](https://transform.tools/json-to-rust-serde) специфичные для poloniex типы, для парсинга ответа REST ручек.
+    - [x] KL
+    - [ ] RT
+- [ ] Скопировать из ТЗ универсальные типы, добавить конверсию из специфичных типов
+    [x] KL
+    [ ] RT
+- [ ] Заимплементить получение данных по WS
     - в ТЗ говорится что мы сначало получаем данные по REST, а потом по WS
     - возможно стоит делать в обратном порядке?
     - нужно убедиться что между REST запросом и подпиской на WS мы не пропустим события RT
@@ -260,3 +264,57 @@
     ...
 ]
 ```
+- Делаю конвертацию из специфичного KL ответа с биржи в тип для БД из ТЗ
+    - Желательно сделать типы которые автоматом парсят строки в нужные типы и обратно
+        - т.е. хранят in-memory распаршенные значения
+        - и прозрачно конвертируют при записи в БД
+        - Но пока нет на это времени.
+    - `impl TryFrom<CandlesResponse>` для типа как в ТЗ сделать не получится
+        - нужен контекст из запроса
+            - название пары, его нет в ответе
+        - нужен глобальный контекст
+            - если нужно конфигурируемое название пар в БД
+        - пока сделаю как простую функцию CandlesResponse
+            - потом продумаю сигнатуру трейта для конверсии между типами биржи и БД
+    - Возник вопрос откуда брать VBS
+        - т.е. если я правильно понимаю, надо вот это
+        ```rust
+        /// quote units traded over the interval
+        pub amount: String,
+        /// base units traded over the interval
+        pub quantity: String,
+        /// quote units traded over the interval filled by market buy orders
+        pub buy_taker_amount: String,
+        /// base units traded over the interval filled by market buy orders
+        pub buy_taker_quantity: String,
+        ```
+        - превратить в это
+        ```rust
+        /// объём покупок в базовой валюте
+        pub buy_base: f64,
+        /// объём продаж в базовой валюте
+        pub sell_base: f64,
+        /// объём покупок в котируемой валюте
+        pub buy_quote: f64,
+        /// объём продаж в котируемой валюте
+        pub sell_quote: f64,
+        ```
+        - Выглядит так, что amount и quantity - это Total
+        - а buy_taker_amount и buy_taker_quantity это часть от Total
+        - тогда получаем что-то вроде:
+        ```rust
+            buy_bas: buyTakerQuantity,
+            sell_base: quantity - buyTakerQuantity,
+            buy_quote: buyTakerAmount,
+            sell_quote: amount - buyTakerAmount,
+        ```
+        - Нужно убедиться.
+- конвертация ответа `candles` в тип как в ТЗ работает (осталось уточнить по VBS)
+```rust
+{"pair":"BTC_USDT", "time_frame":"1m","o":98019.95,"h":98062.32,"l":97990.6, "c":98057.02,"utc_begin":1738770720000,"volume_bs":{"buy_base":0.218558, "sell_base":0.40820199999999995,"buy_quote":21427.53,   "sell_quote":40020.700000000004}}
+{"pair":"TRX_USDT", "time_frame":"1m","o":0.22484, "h":0.22485, "l":0.22484, "c":0.22485, "utc_begin":1738770720000,"volume_bs":{"buy_base":13875.81, "sell_base":12273.219,          "buy_quote":3119.93633, "sell_quote":2759.5826199999997}}
+{"pair":"ETH_USDT", "time_frame":"1m","o":2764.21, "h":2768.29, "l":2763.69, "c":2766.97, "utc_begin":1738770720000,"volume_bs":{"buy_base":5.124448, "sell_base":3.7449640000000004, "buy_quote":14176.29,   "sell_quote":10361.969999999998}}
+{"pair":"DOGE_USDT","time_frame":"1m","o":0.262531,"h":0.262976,"l":0.262451,"c":0.262668,"utc_begin":1738770720000,"volume_bs":{"buy_base":54178.956,"sell_base":42764.02300000001,  "buy_quote":14232.02106,"sell_quote":11231.982370000002}}
+{"pair":"BCH_USDT", "time_frame":"1m","o":333.14,  "h":333.7,   "l":333.07,  "c":333.49,  "utc_begin":1738770720000,"volume_bs":{"buy_base":7.126704, "sell_base":7.447879,           "buy_quote":2375.79,    "sell_quote":2482.96}}
+```
+- можно начинать делать WS или сохранение в БД.

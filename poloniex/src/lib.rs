@@ -1,12 +1,12 @@
-use bitsgap_shared::interval::{IntervalKind, SupportedIntervals};
+use bitsgap_shared::interval::{IntervalKind, IntervalsDict};
 
 pub mod candles;
 
 pub const TEST_SYMBOLS: &[&str] = &["BTC_USDT", "TRX_USDT", "ETH_USDT", "DOGE_USDT", "BCH_USDT"];
 
 // TOOD: load from config
-pub fn supported_intervals() -> anyhow::Result<SupportedIntervals> {
-    SupportedIntervals::default()
+pub fn exchange_intervals() -> anyhow::Result<IntervalsDict> {
+    IntervalsDict::default()
         .with(
             IntervalKind::Minute,
             [
@@ -34,23 +34,28 @@ pub fn supported_intervals() -> anyhow::Result<SupportedIntervals> {
 
 #[cfg(test)]
 mod tests {
-    use core::fmt;
-
     use bitsgap_shared::{
-        ApiConfig, ApiFactory, ApiRequester, AuthMethod, Request,
-        interval::Interval,
+        ApiConfig, ApiFactory, ApiRequester, AuthMethod,
+        interval::{DatabaseIntervals, ExchangeIntervals, Interval, database_intervals},
         utils::{Has, url::BuildUrl},
     };
 
     use super::*;
 
     struct Context {
-        supported_intervals: SupportedIntervals,
+        exchange_intervals: IntervalsDict,
+        database_intervals: IntervalsDict,
     }
 
-    impl Has<SupportedIntervals> for Context {
-        fn give(&self) -> &SupportedIntervals {
-            &self.supported_intervals
+    impl Has<ExchangeIntervals> for Context {
+        fn give(&self) -> &IntervalsDict {
+            &self.exchange_intervals
+        }
+    }
+
+    impl Has<DatabaseIntervals> for Context {
+        fn give(&self) -> &IntervalsDict {
+            &self.database_intervals
         }
     }
 
@@ -58,7 +63,8 @@ mod tests {
         let api_key = std::env::var("API_KEY").expect("API_KEY env var");
         let secret_key = std::env::var("SECRET_KEY").expect("SECRET_KEY env var");
         let context = Context {
-            supported_intervals: super::supported_intervals().unwrap(),
+            exchange_intervals: super::exchange_intervals().unwrap(),
+            database_intervals: database_intervals().unwrap(),
         };
         ApiFactory::new().make_requester(
             ApiConfig {
@@ -72,21 +78,13 @@ mod tests {
         )
     }
 
-    async fn poloniex_get_and_print_json(path: impl BuildUrl<Context>) {
+    async fn poloniex_get_and_print_json<B: ?Sized + BuildUrl<Context>>(path: &B) {
         let value: serde_json::Value = poloniex_requester().get_json(path).await.unwrap();
         println!("{}", serde_json::to_string_pretty(&value).unwrap());
     }
 
-    async fn poloniex_get_response_and_print_debug<
-        R: Request<Response: serde::de::DeserializeOwned + fmt::Debug> + BuildUrl<Context>,
-    >(
-        path: R,
-    ) {
-        let response = poloniex_requester().get_response(path).await.unwrap();
-        println!("{response:#?}");
-    }
-
     #[tokio::test]
+    #[ignore]
     async fn get_poloniex_markets() {
         poloniex_get_and_print_json("markets").await;
     }
@@ -100,18 +98,23 @@ mod tests {
                     kind: IntervalKind::Minute,
                     value: 1,
                 },
-                limit: Some(10),
+                limit: Some(1),
                 start_time: Some(1738700743 * 1000),
                 end_time: Some(1738770743 * 1000),
             };
-            poloniex_get_response_and_print_debug(req).await;
+            let requester = poloniex_requester();
+            let responses = requester.get_response(&req).await.unwrap();
+            for response in responses {
+                let kline = response.kline(&req, requester.context()).unwrap();
+                println!("{}", serde_json::to_string(&kline).unwrap());
+            }
         }
     }
 
     #[test]
     fn test_poliniex_candles_url() {
         let url = poloniex_requester()
-            .build_url(candles::CandlesRequest {
+            .build_url(&candles::CandlesRequest {
                 symbol: "BTC_USDT",
                 interval: Interval {
                     kind: IntervalKind::Minute,

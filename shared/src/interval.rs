@@ -1,6 +1,29 @@
 use anyhow::bail;
 
-use crate::utils::sorted_vec::{Entry, SortedVec};
+// dict to convert string interval from exchange to inner representation and back
+pub struct ExchangeIntervals;
+impl ValueLabel for ExchangeIntervals {
+    type Value = IntervalsDict;
+}
+
+// dict to convert inner representation to database string interval and back
+pub struct DatabaseIntervals;
+impl ValueLabel for DatabaseIntervals {
+    type Value = IntervalsDict;
+}
+
+// TODO: move to config
+pub fn database_intervals() -> anyhow::Result<IntervalsDict> {
+    IntervalsDict::default()
+        .with(IntervalKind::Minute, [(1, "1m"), (15, "15m")])?
+        .with(IntervalKind::Hour, [(1, "1h")])?
+        .with(IntervalKind::Day, [(1, "1d")])
+}
+
+use crate::utils::{
+    ValueLabel,
+    sorted_vec::{Entry, SortedVec},
+};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub struct Interval {
@@ -24,13 +47,13 @@ pub enum IntervalKind {
 // should be optimal for small number of entries, rare inserts, frequent gets
 // TODO: encapsulate dict into separate type, check performance, consifer alternatives
 #[derive(Debug, Default)]
-pub struct SupportedIntervals {
+pub struct IntervalsDict {
     // assume sorted
     kinds: SortedVec<Interval, String>,
     aliases: SortedVec<String, Interval>,
 }
 
-impl SupportedIntervals {
+impl IntervalsDict {
     pub fn add(&mut self, interval: Interval, alias: String) -> anyhow::Result<()> {
         match self.kinds.entry(interval) {
             Entry::Occupied(entry) => {

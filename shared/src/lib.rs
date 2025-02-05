@@ -7,6 +7,7 @@ use utils::url::{BuildUrl, UrlBuilder};
 
 pub mod auth;
 pub mod interval;
+pub mod kline;
 pub mod utils;
 
 #[derive(Debug)]
@@ -65,14 +66,18 @@ pub struct ApiRequester<C> {
 }
 
 impl<C> ApiRequester<C> {
-    pub fn build_url(&self, with: impl BuildUrl<C>) -> anyhow::Result<Url> {
+    pub fn context(&self) -> &C {
+        &self.context
+    }
+
+    pub fn build_url<B: ?Sized + BuildUrl<C>>(&self, with: &B) -> anyhow::Result<Url> {
         UrlBuilder::build(&self.config.base_url, with, &self.context)
     }
 
-    async fn send_request(
+    async fn send_request<B: ?Sized + BuildUrl<C>>(
         &self,
         method: reqwest::Method,
-        build_url: impl BuildUrl<C>,
+        build_url: &B,
     ) -> anyhow::Result<reqwest::Response> {
         let url = self.build_url(build_url).context("build url")?;
 
@@ -89,15 +94,15 @@ impl<C> ApiRequester<C> {
         self.client.execute(req).await.context("execute request")
     }
 
-    async fn get_string(&self, build_url: impl BuildUrl<C>) -> anyhow::Result<String> {
+    async fn get_string<B: ?Sized + BuildUrl<C>>(&self, build_url: &B) -> anyhow::Result<String> {
         let res = self.send_request(reqwest::Method::GET, build_url).await?;
         // we don't use Response::json to separate different kinds of errors
         res.text().await.context("receive JSON response")
     }
 
-    pub async fn get_json<T: DeserializeOwned>(
+    pub async fn get_json<T: DeserializeOwned, B: ?Sized + BuildUrl<C>>(
         &self,
-        build_url: impl BuildUrl<C>,
+        build_url: &B,
     ) -> anyhow::Result<T> {
         let json = self.get_string(build_url).await?;
         serde_json::from_str(&json).context("parse response as JSON")
@@ -105,7 +110,7 @@ impl<C> ApiRequester<C> {
 
     pub async fn get_response<R: Request<Response: serde::de::DeserializeOwned> + BuildUrl<C>>(
         &self,
-        build_url: R,
+        build_url: &R,
     ) -> anyhow::Result<R::Response> {
         self.get_json(build_url).await
     }
