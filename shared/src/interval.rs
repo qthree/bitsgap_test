@@ -93,4 +93,8 @@ impl IntervalsDict {
     pub fn to_alias(&self, interval: Interval) -> Option<&str> {
         self.kinds.get(&interval).map(AsRef::as_ref)
     }
+
+    pub fn to_interval(&self, alias: &str) -> Option<Interval> {
+        self.aliases.get(alias).cloned()
+    }
 }

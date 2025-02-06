@@ -1,4 +1,12 @@
-use bitsgap_shared::interval::{IntervalKind, IntervalsDict};
+use bitsgap_shared::{
+    interval::{IntervalKind, IntervalsDict},
+    utils::ValueLabel,
+};
+
+pub struct WsCandlesChannels;
+impl ValueLabel for WsCandlesChannels {
+    type Value = IntervalsDict;
+}
 
 // TOOD: load from config
 pub fn ws_candles_channels() -> anyhow::Result<IntervalsDict> {

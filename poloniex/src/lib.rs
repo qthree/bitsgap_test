@@ -13,7 +13,7 @@ mod tests {
         utils::Has,
     };
     use rest::intervals::exchange_intervals;
-    use ws::intervals::ws_candles_channels;
+    use ws::intervals::{WsCandlesChannels, ws_candles_channels};
 
     use super::*;
 
@@ -25,14 +25,20 @@ mod tests {
     }
 
     impl Has<ExchangeIntervals> for Context {
-        fn give(&self) -> &IntervalsDict {
+        fn give(&self, _label: ExchangeIntervals) -> &IntervalsDict {
             &self.exchange_intervals
         }
     }
 
     impl Has<DatabaseIntervals> for Context {
-        fn give(&self) -> &IntervalsDict {
+        fn give(&self, _label: DatabaseIntervals) -> &IntervalsDict {
             &self.database_intervals
+        }
+    }
+
+    impl Has<WsCandlesChannels> for Context {
+        fn give(&self, _label: WsCandlesChannels) -> &IntervalsDict {
+            &self.ws_candles_channels
         }
     }
 

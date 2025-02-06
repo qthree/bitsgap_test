@@ -34,7 +34,7 @@ impl<S: AsRef<str>, C: Has<ExchangeIntervals>> BuildUrl<C> for CandlesRequest<S>
     fn build_url(&self, url_builder: &mut UrlBuilder, context: &C) -> anyhow::Result<()> {
         url_builder.add_path_segments(&["markets", self.symbol.as_ref(), "candles"])?;
 
-        let supported_intervals = context.give();
+        let supported_intervals = context.give(ExchangeIntervals);
         let Some(interval_alias) = supported_intervals.to_alias(self.interval) else {
             bail!("unsupported interval")
         };
@@ -117,9 +117,8 @@ impl CandlesResponse {
         // Right now, it does match to database format from test task, but we need think about converting it in the futures
         let pair = symbol.as_ref().into();
 
-        // TODO: is better store it as Interval here? and convert only when saving to database?
         let time_frame = context
-            .give()
+            .give(DatabaseIntervals)
             .to_alias(interval)
             .context("convert interval to databse time frame format")?
             .into();
@@ -154,7 +153,6 @@ impl CandlesResponse {
             l: low.parse().context("parse open price")?,
             c: close.parse().context("parse open price")?,
             utc_begin: (*start_time).try_into().context("convert start time")?,
-            // TODO: verify if it's correct
             volume_bs,
         })
     }
