@@ -7,7 +7,7 @@ use utils::url::{BuildUrl, UrlBuilder};
 
 pub mod auth;
 pub mod interval;
-pub mod kline;
+pub mod records;
 pub mod utils;
 
 #[derive(Debug)]

@@ -2,12 +2,14 @@ use anyhow::{Context, bail};
 use bitsgap_shared::{
     Request,
     interval::{DatabaseIntervals, ExchangeIntervals, Interval},
-    kline::{Kline, VBS},
+    records::kline::{Kline, VBS},
     utils::{
         Has,
         url::{BuildUrl, UrlBuilder},
     },
 };
+
+use crate::units::{PxCount, PxInterval, PxPrice, PxTimestamp, PxUnits};
 
 pub struct CandlesRequest<S> {
     /// symbol name
@@ -55,33 +57,35 @@ impl<S: AsRef<str>, C: Has<ExchangeIntervals>> BuildUrl<C> for CandlesRequest<S>
 #[derive(Debug, serde::Deserialize)]
 pub struct CandlesResponse {
     /// lowest price over the interval
-    pub low: String,
+    pub low: PxPrice,
     /// highest price over the interval
-    pub high: String,
+    pub high: PxPrice,
     /// price at the start time
-    pub open: String,
+    pub open: PxPrice,
     /// price at the end time
-    pub close: String,
+    pub close: PxPrice,
     /// quote units traded over the interval
-    pub amount: String,
+    pub amount: PxUnits,
     /// base units traded over the interval
-    pub quantity: String,
+    pub quantity: PxUnits,
     /// quote units traded over the interval filled by market buy orders
-    pub buy_taker_amount: String,
+    pub buy_taker_amount: PxUnits,
     /// base units traded over the interval filled by market buy orders
-    pub buy_taker_quantity: String,
+    pub buy_taker_quantity: PxUnits,
     /// integer count of trades
-    pub trade_count: u32,
+    pub trade_count: PxCount,
     /// time the record was pushed
-    pub timestamp: u64,
+    /// it's usually later than `close_time`
+    /// "ts" in official documentation
+    pub record_time: PxTimestamp,
     /// weighted average over the interval
-    pub weighted_average: String,
+    pub weighted_average: PxPrice,
     /// the selected interval
-    pub interval: String,
+    pub interval: PxInterval,
     /// start time of interval
-    pub start_time: u64,
+    pub start_time: PxTimestamp,
     /// close time of interval
-    pub close_time: u64,
+    pub close_time: PxTimestamp,
 }
 
 impl CandlesResponse {

@@ -1,4 +1,5 @@
 pub mod rest;
+pub mod units;
 pub mod ws;
 
 pub const TEST_TASK_SYMBOLS: &[&str] =

@@ -9,6 +9,7 @@ publish = false
 anyhow.workspace = true
 arrayvec.workspace = true
 bitsgap_shared.workspace = true
+let_clone.workspace = true
 serde = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]
