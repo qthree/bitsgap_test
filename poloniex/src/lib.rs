@@ -78,7 +78,7 @@ mod tests {
         )
     }
 
-    async fn poloniex_get_and_print_json<B: ?Sized + BuildUrl<Context>>(path: &B) {
+    async fn poloniex_get_and_print_json<B: BuildUrl<Context>>(path: &B) {
         let value: serde_json::Value = poloniex_requester().get_json(path).await.unwrap();
         println!("{}", serde_json::to_string_pretty(&value).unwrap());
     }
@@ -86,7 +86,7 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn get_poloniex_markets() {
-        poloniex_get_and_print_json("markets").await;
+        poloniex_get_and_print_json(&"markets").await;
     }
 
     #[tokio::test]

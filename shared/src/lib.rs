@@ -70,11 +70,11 @@ impl<C> ApiRequester<C> {
         &self.context
     }
 
-    pub fn build_url<B: ?Sized + BuildUrl<C>>(&self, with: &B) -> anyhow::Result<Url> {
+    pub fn build_url<B: BuildUrl<C>>(&self, with: &B) -> anyhow::Result<Url> {
         UrlBuilder::build(&self.config.base_url, with, &self.context)
     }
 
-    async fn send_request<B: ?Sized + BuildUrl<C>>(
+    async fn send_request<B: BuildUrl<C>>(
         &self,
         method: reqwest::Method,
         build_url: &B,
@@ -94,13 +94,13 @@ impl<C> ApiRequester<C> {
         self.client.execute(req).await.context("execute request")
     }
 
-    async fn get_string<B: ?Sized + BuildUrl<C>>(&self, build_url: &B) -> anyhow::Result<String> {
+    async fn get_string<B: BuildUrl<C>>(&self, build_url: &B) -> anyhow::Result<String> {
         let res = self.send_request(reqwest::Method::GET, build_url).await?;
         // we don't use Response::json to separate different kinds of errors
         res.text().await.context("receive JSON response")
     }
 
-    pub async fn get_json<T: DeserializeOwned, B: ?Sized + BuildUrl<C>>(
+    pub async fn get_json<T: DeserializeOwned, B: BuildUrl<C>>(
         &self,
         build_url: &B,
     ) -> anyhow::Result<T> {

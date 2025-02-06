@@ -12,19 +12,19 @@ pub trait BuildUrl<C> {
     fn build_url(&self, url_builder: &mut UrlBuilder, context: &C) -> anyhow::Result<()>;
 }
 
-impl<C> BuildUrl<C> for str {
+impl<C> BuildUrl<C> for &str {
     fn build_url(&self, url_builder: &mut UrlBuilder, _context: &C) -> anyhow::Result<()> {
         url_builder.join_path(self)
     }
 }
 
-impl<C> BuildUrl<C> for [&str] {
+impl<C> BuildUrl<C> for &[&str] {
     fn build_url(&self, url_builder: &mut UrlBuilder, _context: &C) -> anyhow::Result<()> {
-        url_builder.add_path_segments(self)
+        url_builder.add_path_segments(*self)
     }
 }
 
-impl<C, const SIZE: usize> BuildUrl<C> for [&str; SIZE] {
+impl<C, const SIZE: usize> BuildUrl<C> for &[&str; SIZE] {
     fn build_url(&self, url_builder: &mut UrlBuilder, _context: &C) -> anyhow::Result<()> {
         url_builder.add_path_segments(*self)
     }
@@ -36,7 +36,7 @@ pub struct UrlBuilder<'a> {
 }
 
 impl<'a> UrlBuilder<'a> {
-    pub(crate) fn build<C, B: ?Sized + BuildUrl<C>>(
+    pub(crate) fn build<C, B: BuildUrl<C>>(
         base_url: &'a Url,
         build: &B,
         context: &C,
