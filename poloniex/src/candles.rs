@@ -102,10 +102,7 @@ impl CandlesResponse {
             high,
             open,
             close,
-            amount,
             quantity,
-            buy_taker_amount,
-            buy_taker_quantity,
             start_time,
             ..
         } = self;
@@ -122,8 +119,18 @@ impl CandlesResponse {
 
         // TODO: make type which deserializes as String, but stores in-memory as number, use it in CandlesResponse
         // TODO: verify numbers to be positive and finite
-        let amount: f64 = amount.parse().context("parse amount")?;
         let quantity: f64 = quantity.parse().context("parse quantity")?;
+
+        // Test task clarification: "Достаточно заполнить buy_base: quantity"
+        let volume_bs = VBS {
+            buy_base: quantity,
+            ..Default::default()
+        };
+
+        // TODO: use or remove
+        // Naive implementation:
+        /*
+        let amount: f64 = amount.parse().context("parse amount")?;
         let buy_taker_amount: f64 = buy_taker_amount.parse().context("parse buy taker amount")?;
         let buy_taker_quantity: f64 = buy_taker_quantity
             .parse()
@@ -141,6 +148,7 @@ impl CandlesResponse {
         if volume_bs.sell_quote < 0.0 {
             bail!("sell quote volume is negative");
         }
+        */
 
         Ok(Kline {
             pair,

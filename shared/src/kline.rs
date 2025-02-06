@@ -18,7 +18,7 @@ pub struct Kline {
     pub volume_bs: VBS,
 }
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, serde::Serialize, Default)]
 pub struct VBS {
     /// объём покупок в базовой валюте
     pub buy_base: f64,
