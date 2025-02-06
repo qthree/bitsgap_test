@@ -451,4 +451,42 @@
     - сделал protocol типы для (де)сериализации json сообщений как они приходят в WS
         - сделал тесты, чтобы проверить что все примеры json сообщений из документации десериализуются
         - сделал десериализацию Stream сообщений, data: serde_json::Value
-    - делаю синхронную подписку на каналы
+    - сделал подключение по WS
+- сделал тест который подписывается на канал "candles_minute_1"
+    - и показывает несколько сообщений
+    ```rust
+    CandlesMessage { symbol: "BTC_USDT", amount: "90155.31551615", high: "96382.55", quantity: "0.935689", trade_count: 85, low: "96333.91", close_time: 1738867079999, start_time: 1738867020000, close: "96382.55", open: "96337.63", record_time: 1738867071361 }
+    Kline { pair: "BTC_USDT", time_frame: "1m", o: 96337.63, h: 96382.55, l: 96333.91, c: 96382.55, utc_begin: 1738867020000, volume_bs: VBS { buy_base: 0.935689, sell_base: 0.0, buy_quote: 90155.31551615, sell_quote: 0.0 } }
+
+    CandlesMessage { symbol: "BTC_USDT", amount: "94453.40158607", high: "96400.42", quantity: "0.980277", trade_count: 89, low: "96333.91", close_time: 1738867079999, start_time: 1738867020000, close: "96393.3", open: "96337.63", record_time: 1738867072361 }
+    Kline { pair: "BTC_USDT", time_frame: "1m", o: 96337.63, h: 96400.42, l: 96333.91, c: 96393.3, utc_begin: 1738867020000, volume_bs: VBS { buy_base: 0.980277, sell_base: 0.0, buy_quote: 94453.40158607, sell_quote: 0.0 } }
+
+    CandlesMessage { symbol: "BTC_USDT", amount: "95845.35222992", high: "96402.15", quantity: "0.994716", trade_count: 90, low: "96333.91", close_time: 1738867079999, start_time: 1738867020000, close: "96402.15", open: "96337.63", record_time: 1738867080120 }
+    Kline { pair: "BTC_USDT", time_frame: "1m", o: 96337.63, h: 96402.15, l: 96333.91, c: 96402.15, utc_begin: 1738867020000, volume_bs: VBS { buy_base: 0.994716, sell_base: 0.0, buy_quote: 95845.35222992, sell_quote: 0.0 } }
+    ```
+- Особенности данных свечек:
+    - По WS последняя свечка обновляется каждую секунду
+    - т.е. свечка та же
+    - start_time и close_time те же
+    - а record_time и значения цен/объёма/кол-ва торгов меняется
+    - получается что при сохранении в БД нужно не просто добавлять в конец новую запись
+    - а искать нет ли уже такой по utc_begin
+    - Получается следующая комбинацией полей KL должна быть уникальной:
+        - pair
+        - time_frame
+        - utc_begin
+- сделал тест который подписывается на канал "trades"
+    - и показывает несколько сообщений
+    ```rust
+    TradesMessage { symbol: "BTC_USDT", amount: "1376.60073045", taker_side: Sell, quantity: "0.014349", create_time: 1738868627090, price: "95937.05", id: "121227976", record_time: 1738868627100 }
+    RecentTrade { tid: "121227976", pair: "BTC_USDT", price: "95937.05", amount: "1376.60073045", side: "sell", timestamp: 1738868627090 }
+
+    TradesMessage { symbol: "BTC_USDT", amount: "4.41309464", taker_side: Sell, quantity: "0.000046", create_time: 1738868627661, price: "95936.84", id: "121227977", record_time: 1738868627671 }
+    RecentTrade { tid: "121227977", pair: "BTC_USDT", price: "95936.84", amount: "4.41309464", side: "sell", timestamp: 1738868627661 }
+
+    TradesMessage { symbol: "BTC_USDT", amount: "1431.7645342", taker_side: Sell, quantity: "0.014924", create_time: 1738868627945, price: "95937.05", id: "121227978", record_time: 1738868627962 }
+    RecentTrade { tid: "121227978", pair: "BTC_USDT", price: "95937.05", amount: "1431.7645342", side: "sell", timestamp: 1738868627945 }
+    ```
+    - тут вроде всё проще
+    - или tid сам по себе уникальный
+    - или комбинация tid+pair

@@ -1,6 +1,6 @@
 use serde_json::Value;
 
-#[derive(Debug, serde::Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 #[serde(tag = "event", rename_all = "snake_case")]
 pub enum ClientMsg {
     Ping,
@@ -26,8 +26,8 @@ pub enum ServerMsg {
 
 #[derive(Debug, serde::Deserialize, PartialEq)]
 pub struct ServerStream {
-    data: Vec<Value>,
-    channel: String,
+    pub data: Vec<Value>,
+    pub channel: String,
 }
 impl ServerStream {
     pub fn into_msg(self) -> ServerMsg {

@@ -5,4 +5,3 @@ pub type PxPrice = String;
 pub type PxUnits = String;
 pub type PxCount = u32;
 pub type PxInterval = String;
-pub type PxTradeId = u64;

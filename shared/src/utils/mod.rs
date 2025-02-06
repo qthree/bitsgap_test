@@ -9,3 +9,7 @@ pub trait Has<L: ValueLabel> {
 pub trait ValueLabel {
     type Value;
 }
+
+pub trait Strict: 'static + Send + Sync + Sized {}
+
+impl<T: 'static + Send + Sync + Sized> Strict for T {}

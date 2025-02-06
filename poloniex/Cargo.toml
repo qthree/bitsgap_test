@@ -9,11 +9,12 @@ publish = false
 anyhow.workspace = true
 arrayvec.workspace = true
 bitsgap_shared.workspace = true
+futures.workspace = true
 let_clone.workspace = true
+log.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 
-tokio-tungstenite.workspace = true
-
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt", "macros"] }
+env_logger.workspace = true

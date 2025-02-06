@@ -9,6 +9,7 @@ pub mod auth;
 pub mod interval;
 pub mod records;
 pub mod utils;
+pub mod ws;
 
 #[derive(Debug)]
 pub struct ApiFactory {

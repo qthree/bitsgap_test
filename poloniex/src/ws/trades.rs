@@ -1,7 +1,7 @@
 use bitsgap_shared::records::recent_trade::RecentTrade;
 use let_clone::let_clone;
 
-use crate::units::{PxPrice, PxSymbol, PxTimestamp, PxTradeId, PxUnits};
+use crate::units::{PxPrice, PxSymbol, PxTimestamp, PxUnits};
 
 #[derive(Debug, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -19,7 +19,8 @@ pub struct TradesMessage {
     /// trade price
     pub price: PxPrice,
     /// trade id
-    pub id: PxTradeId,
+    // NOTE: in official docs it's stated as "Long", but WS sends String?!
+    pub id: String,
     /// time the record was pushed
     #[serde(rename = "ts")]
     pub record_time: PxTimestamp,
@@ -51,9 +52,9 @@ impl TradesMessage {
             id,
             ..
         } = self;
-        let_clone!(symbol: pair, price, amount);
+        let_clone!(symbol: pair, price, amount, id: tid);
         RecentTrade {
-            tid: id.to_string(),
+            tid,
             // TODO: make sure it looks like "BTC_USDT"
             pair,
             price,

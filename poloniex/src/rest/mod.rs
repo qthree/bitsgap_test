@@ -9,9 +9,9 @@ mod tests {
     };
 
     use super::candles::CandlesRequest;
-    use crate::tests::{Context, poloniex_requester};
+    use crate::tests::{PoloniexContext, poloniex_requester};
 
-    async fn poloniex_get_and_print_json<B: BuildUrl<Context>>(path: &B) {
+    async fn poloniex_get_and_print_json<B: BuildUrl<PoloniexContext>>(path: &B) {
         let value: serde_json::Value = poloniex_requester().get_json(path).await.unwrap();
         println!("{}", serde_json::to_string_pretty(&value).unwrap());
     }
