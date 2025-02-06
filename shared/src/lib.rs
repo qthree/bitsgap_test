@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{any::type_name, sync::Arc};
 
 use anyhow::Context;
 use reqwest::{Url, header::CONTENT_TYPE};
@@ -106,7 +106,11 @@ impl<C> ApiRequester<C> {
         build_url: &B,
     ) -> anyhow::Result<T> {
         let json = self.get_string(build_url).await?;
-        serde_json::from_str(&json).context("parse response as JSON")
+        let res = serde_json::from_str(&json);
+        if res.is_err() {
+            log::error!("Can't parse json as {}: {json}", type_name::<T>());
+        }
+        res.context("parse response as JSON")
     }
 
     pub async fn get_response<R: Request<Response: serde::de::DeserializeOwned> + BuildUrl<C>>(

@@ -4,14 +4,7 @@ use anyhow::{Context as _, bail};
 use reqwest::Url;
 
 use super::AuthMethod;
-
-/// return UNIX timestamp in milliseconds since 'Thu Jan 01 1970 00:00:00.000'
-/// u64 is enough for another ~585 million years
-fn timestamp() -> u64 {
-    std::time::UNIX_EPOCH
-        .elapsed()
-        .map_or(0, |ts| ts.as_millis().try_into().unwrap_or(u64::MAX))
-}
+use crate::utils::time::timestamp_now;
 
 // TODO: optimize by making query sorted in the first place, in send_request?
 // But other auth methods maybe don't want this
@@ -61,7 +54,7 @@ impl AuthMethod {
                 // url without authority, domain and query
                 let path = req.url().path();
 
-                let timestamp = timestamp().to_string();
+                let timestamp = timestamp_now().to_string();
 
                 let params = timestamped_sorted_params(req.url(), &timestamp);
 

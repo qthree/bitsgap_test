@@ -1,4 +1,5 @@
 pub mod sorted_vec;
+pub mod time;
 pub mod url;
 
 // TODO: make derive macro

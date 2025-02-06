@@ -11,6 +11,7 @@ base64.workspace = true
 equivalent.workspace = true
 form_urlencoded.workspace = true
 futures.workspace = true
+jiff.workspace = true
 hmac.workspace = true
 log.workspace = true
 reqwest.workspace = true

@@ -32,7 +32,7 @@ mod tests {
     use trades::TradesMessage;
 
     use super::*;
-    use crate::tests::PoloniexContext;
+    use crate::context::PoloniexContext;
 
     async fn test_ws_public_channel<T: serde::de::DeserializeOwned + fmt::Debug>(
         ch: &str,

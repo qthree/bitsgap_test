@@ -9,7 +9,7 @@ mod tests {
     };
 
     use super::candles::CandlesRequest;
-    use crate::tests::{PoloniexContext, poloniex_requester};
+    use crate::{context::PoloniexContext, tests::poloniex_requester};
 
     async fn poloniex_get_and_print_json<B: BuildUrl<PoloniexContext>>(path: &B) {
         let value: serde_json::Value = poloniex_requester().get_json(path).await.unwrap();
@@ -30,6 +30,7 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn get_poloniex_candles() {
+        let requester = poloniex_requester();
         for symbol in crate::TEST_TASK_SYMBOLS {
             let req = CandlesRequest {
                 symbol,
@@ -41,7 +42,6 @@ mod tests {
                 start_time: Some(1738700743 * 1000),
                 end_time: Some(1738770743 * 1000),
             };
-            let requester = poloniex_requester();
             let responses = requester.get_response(&req).await.unwrap();
             for response in responses {
                 let kline = response.kline(&req, requester.context()).unwrap();

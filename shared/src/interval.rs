@@ -97,4 +97,8 @@ impl IntervalsDict {
     pub fn to_interval(&self, alias: &str) -> Option<Interval> {
         self.aliases.get(alias).cloned()
     }
+
+    pub fn iter_intervals(&self) -> impl '_ + Iterator<Item = Interval> {
+        self.kinds.keys().copied()
+    }
 }

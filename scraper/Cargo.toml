@@ -5,3 +5,15 @@ version = "0.1.0"
 edition = "2021"
 publish = false
 
+[dependencies]
+bitsgap_shared.workspace = true
+bitsgap_poloniex.workspace = true
+
+anyhow.workspace = true
+clap.workspace = true
+env_logger.workspace = true
+log.workspace = true
+mongodb.workspace = true
+smallvec.workspace = true
+tokio = { workspace = true, features = ["rt", "macros"] }
+
