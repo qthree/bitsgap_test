@@ -121,7 +121,7 @@ impl CandlesResponse {
             .into();
 
         // TODO: make type which deserializes as String, but stores in-memory as number, use it in CandlesResponse
-        // TODO: verify numbers to be positive and finite        
+        // TODO: verify numbers to be positive and finite
         let amount: f64 = amount.parse().context("parse amount")?;
         let quantity: f64 = quantity.parse().context("parse quantity")?;
         let buy_taker_amount: f64 = buy_taker_amount.parse().context("parse buy taker amount")?;
