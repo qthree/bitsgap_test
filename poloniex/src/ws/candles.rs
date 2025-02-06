@@ -9,7 +9,7 @@ use let_clone::let_clone;
 use super::intervals::WsCandlesChannels;
 use crate::units::{PxCount, PxPrice, PxSymbol, PxTimestamp, PxUnits};
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CandlesMessage {
     /// symbol name
