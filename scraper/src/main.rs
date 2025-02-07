@@ -18,12 +18,19 @@ mod stream;
 
 #[derive(Debug, Parser)]
 struct Config {
-    #[arg(env)]
+    #[arg(env, long)]
     api_key: String,
-    #[arg(env)]
+    #[arg(env, long)]
     secret_key: String,
+    /// MongoDB URI
     #[arg(env, long)]
     mongodb_uri: String,
+    /// Download KL since timestamp
+    #[arg(long)]
+    since: String,
+    /// Download KL limit per interval
+    #[arg(long = "download-limit")]
+    download_limit_per_interval: Option<u32>,
 }
 
 #[tokio::main]
@@ -36,20 +43,31 @@ async fn main() -> anyhow::Result<()> {
         api_key,
         secret_key,
         mongodb_uri,
+        since,
+        download_limit_per_interval,
     } = Config::parse();
+    let since = timestamp_parse(&since)?;
 
     let storage = Storage::init(&mongodb_uri).await.context("init storage")?;
 
-    scrap_poloniex(api_key, secret_key, storage).await
+    scrap_poloniex(
+        api_key,
+        secret_key,
+        storage,
+        since,
+        download_limit_per_interval,
+    )
+    .await
 }
 
 async fn scrap_poloniex(
     api_key: String,
     secret_key: String,
     storage: Storage,
+    since: u64,
+    download_limit_per_interval: Option<u32>,
 ) -> anyhow::Result<()> {
     // TODO: move to config
-    let since = timestamp_parse("2025-02-01T00:00:00Z")?;
     let base_url = "https://api.poloniex.com"
         .try_into()
         .context("parse exchange api url")?;
@@ -68,9 +86,16 @@ async fn scrap_poloniex(
 
     let symbols = bitsgap_poloniex::TEST_TASK_SYMBOLS;
 
-    download::poloniex_klines(&requester, &storage, symbols, since, 500, Some(5000))
-        .await
-        .context("download klines")?;
+    download::poloniex_klines(
+        &requester,
+        &storage,
+        symbols,
+        since,
+        500,
+        download_limit_per_interval,
+    )
+    .await
+    .context("download klines")?;
 
     let context = requester.context();
 
@@ -84,7 +109,7 @@ async fn scrap_poloniex(
     );
     channels.insert("trades".into(), Channel::Trades);
 
-    stream::dump_events(requester.context(), &storage, Some(5000), channels, symbols)
+    stream::dump_events(requester.context(), &storage, None, channels, symbols)
         .await
         .context("dump events")?;
     Ok(())

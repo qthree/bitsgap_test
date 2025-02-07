@@ -31,8 +31,9 @@ cargo test -- --nocapture
 
 ## Запуск scraper
 - Вызываем в корне проекта
+    - `download-limit` ограничивает количество событий при первоначальном скачивании KL, этот агрумент можно убрать
 ```bash
-cargo run --release --bin bitsgap_scraper -- --mongodb-uri mongodb://scraper:scraper@localhost/bitsgap_qthree_test
+cargo run --release --bin bitsgap_scraper -- --since "2024-12-01T00:00:00Z" --download-limit 10000 --mongodb-uri mongodb://scraper:scraper@localhost/bitsgap_qthree_test
 ```
 - Проверям монгу
 ```bash

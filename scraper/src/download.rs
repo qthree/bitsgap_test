@@ -14,7 +14,7 @@ pub(crate) async fn poloniex_klines(
     symbols: &[&str],
     since: u64,
     limit_per_request: u16,
-    total_limit: Option<usize>,
+    limit_per_interval: Option<u32>,
 ) -> anyhow::Result<()> {
     // Download historic klines
     log::info!("Downloading historic klines...");
@@ -22,6 +22,7 @@ pub(crate) async fn poloniex_klines(
     for symbol in symbols {
         let intervals = requester.context().give(DatabaseIntervals).iter();
         for (interval, interval_name) in intervals {
+            let mut klines_per_interval = 0;
             let mut end_time = None;
             // TODO: should use new "shared" request type, once I'll figure out proper abstraction between different exchanges
             // TODO: should automatically convert to klines
@@ -55,15 +56,16 @@ pub(crate) async fn poloniex_klines(
                     end_time = Some(first.start_time - 1);
                 }
 
-                total_klines_downloaded += count;
+                klines_per_interval += count as u32;
                 if count < limit_per_request as _ {
                     break;
                 }
-                if matches!(total_limit, Some(total_limit) if total_klines_downloaded >= total_limit)
+                if matches!(limit_per_interval, Some(limit_per_interval) if klines_per_interval >= limit_per_interval)
                 {
                     break;
                 }
             }
+            total_klines_downloaded += klines_per_interval;
         }
     }
 
