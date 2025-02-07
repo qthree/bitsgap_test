@@ -8,10 +8,22 @@ pub const TEST_TASK_SYMBOLS: &[&str] =
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Once;
+
     use bitsgap_shared::{ApiConfig, ApiFactory, ApiRequester, AuthMethod};
     use context::PoloniexContext;
 
     use super::*;
+
+    static LOGGER: Once = Once::new();
+
+    pub(crate) fn init_logger() {
+        LOGGER.call_once(|| {
+            env_logger::builder()
+                .filter_level(log::LevelFilter::Debug)
+                .init();
+        });
+    }
 
     pub(crate) fn poloniex_requester() -> ApiRequester<PoloniexContext> {
         let api_key = std::env::var("API_KEY").expect("API_KEY env var");

@@ -17,7 +17,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     async fn get_poloniex_markets() {
         poloniex_get_and_print_json(&"markets").await;
     }
@@ -28,7 +27,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
     async fn get_poloniex_candles() {
         let requester = poloniex_requester();
         for symbol in crate::TEST_TASK_SYMBOLS {
@@ -51,7 +49,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn test_poliniex_candles_url() {
         let url = poloniex_requester()
             .build_url(&CandlesRequest {
