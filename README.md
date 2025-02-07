@@ -25,12 +25,16 @@
     ```
 ## Запуск тестов
 - Вызываем в корне проекта
-```
+```bash
 cargo test -- --nocapture
 ```
 
 ## Запуск scraper
 - Вызываем в корне проекта
-```
+```bash
 cargo run --release --bin bitsgap_scraper -- --mongodb-uri mongodb://scraper:scraper@localhost/bitsgap_qthree_test
+```
+- Проверям монгу
+```bash
+echo -e 'use bitsgap_qthree_test \n db.klines.find() \n db.recent_trades.find()' | mongo --quiet
 ```
