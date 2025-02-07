@@ -1,3 +1,4 @@
+use anyhow::Context;
 use bitsgap_shared::{
     interval::{DatabaseIntervals, ExchangeIntervals, IntervalsDict, database_intervals},
     utils::Has,
@@ -5,7 +6,7 @@ use bitsgap_shared::{
 
 use crate::{
     rest::intervals::exchange_intervals,
-    ws::intervals::{WsCandlesChannels, ws_candles_channels},
+    ws::intervals::{WsCandlesChannels, all_ws_candles_channels, supported_ws_candles_channels},
 };
 
 pub struct PoloniexContext {
@@ -14,12 +15,18 @@ pub struct PoloniexContext {
     database_intervals: IntervalsDict,
 }
 impl PoloniexContext {
-    pub fn init() -> Self {
-        Self {
-            exchange_intervals: exchange_intervals().unwrap(),
-            ws_candles_channels: ws_candles_channels().unwrap(),
-            database_intervals: database_intervals().unwrap(),
-        }
+    pub fn init(only_supported_candles: bool) -> anyhow::Result<Self> {
+        let database_intervals = database_intervals().context("database intervals")?;
+        Ok(Self {
+            exchange_intervals: exchange_intervals().context("exchange intervals")?,
+            ws_candles_channels: if only_supported_candles {
+                supported_ws_candles_channels(&database_intervals)
+            } else {
+                all_ws_candles_channels()
+            }
+            .context("candles channels intervals")?,
+            database_intervals,
+        })
     }
 }
 

@@ -16,7 +16,7 @@ mod tests {
     pub(crate) fn poloniex_requester() -> ApiRequester<PoloniexContext> {
         let api_key = std::env::var("API_KEY").expect("API_KEY env var");
         let secret_key = std::env::var("SECRET_KEY").expect("SECRET_KEY env var");
-        let context = PoloniexContext::init();
+        let context = PoloniexContext::init(false).unwrap();
         ApiFactory::new().make_requester(
             ApiConfig {
                 base_url: "https://api.poloniex.com".try_into().unwrap(),

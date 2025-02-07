@@ -5,6 +5,7 @@ use bitsgap_shared::ws::{Message, SimpleJsonCodec, WsClient, WsConfig};
 use protocol::{ClientMsg, ServerMsg};
 
 pub mod candles;
+pub mod channels;
 pub mod intervals;
 pub mod protocol;
 pub mod trades;
@@ -15,6 +16,7 @@ pub async fn public_ws() -> anyhow::Result<WsClient<ClientMsg, ServerMsg>> {
         ping: Message::Text(ping.into()),
         // The WebSockets server expects a message or a ping every 30 seconds
         ping_interval: Duration::from_secs(20),
+        // TODO: move to config
         uri: "wss://ws.poloniex.com/ws/public"
             .parse()
             .context("parse uri")?,
@@ -27,6 +29,7 @@ pub async fn public_ws() -> anyhow::Result<WsClient<ClientMsg, ServerMsg>> {
 mod tests {
     use core::fmt;
 
+    use bitsgap_shared::interval::{Interval, IntervalKind};
     use candles::CandlesMessage;
     use protocol::{ServerEvent, ServerStream};
     use trades::TradesMessage;
@@ -62,10 +65,10 @@ mod tests {
         for _ in 0..num {
             let msg = client.recv().await.unwrap();
             match msg {
-                ServerMsg::Stream(ServerStream { mut data, channel }) if channel == ch => {
-                    assert_eq!(data.len(), 1);
+                ServerMsg::Stream(ServerStream { data, channel }) if channel == ch => {
+                    assert_eq!(data.0.len(), 1);
                     println!("{data:?}");
-                    let msg: T = serde_json::from_value(data.remove(0)).unwrap();
+                    let msg: T = data.into_events().next().unwrap().unwrap();
                     println!("{msg:?}");
                     messages.push(msg);
                 }
@@ -78,10 +81,18 @@ mod tests {
     #[tokio::test]
     async fn test_public_ws_candles() {
         let ch = "candles_minute_1";
-        let context = PoloniexContext::init();
+        let context = PoloniexContext::init(false).unwrap();
         let messages = test_ws_public_channel::<CandlesMessage>(ch, 3).await;
         for msg in messages {
-            let kline = msg.kline(ch, &context).unwrap();
+            let kline = msg
+                .kline(
+                    Interval {
+                        kind: IntervalKind::Minute,
+                        value: 1,
+                    },
+                    &context,
+                )
+                .unwrap();
             println!("{kline:?}");
         }
     }

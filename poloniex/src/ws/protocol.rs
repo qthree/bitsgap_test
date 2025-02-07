@@ -1,3 +1,4 @@
+use anyhow::Context;
 use serde_json::Value;
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
@@ -26,12 +27,26 @@ pub enum ServerMsg {
 
 #[derive(Debug, serde::Deserialize, PartialEq)]
 pub struct ServerStream {
-    pub data: Vec<Value>,
+    pub data: StreamData,
     pub channel: String,
 }
 impl ServerStream {
     pub fn into_msg(self) -> ServerMsg {
         ServerMsg::Stream(self)
+    }
+}
+
+#[derive(Debug, serde::Deserialize, PartialEq)]
+#[serde(transparent)]
+pub struct StreamData(pub Vec<Value>);
+
+impl StreamData {
+    pub fn into_events<T: serde::de::DeserializeOwned>(
+        self,
+    ) -> impl Iterator<Item = anyhow::Result<T>> {
+        self.0.into_iter().map(|value| {
+            serde_json::from_value(value).context("parse stream event from json value")
+        })
     }
 }
 
@@ -321,7 +336,7 @@ mod tests {
         assert_eq(
             ServerStream {
                 channel: "candles_minute_1".into(),
-                data: vec![
+                data: StreamData(vec![
                     serde_json::to_value(&CandlesMessage {
                         symbol: "BTC_USDT".into(),
                         amount: "0".into(),
@@ -336,7 +351,7 @@ mod tests {
                         record_time: 1648057141081,
                     })
                     .unwrap(),
-                ],
+                ]),
             }
             .into_msg(),
             r#"

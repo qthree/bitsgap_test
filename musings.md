@@ -324,7 +324,7 @@
 - [x] Заимплементить получение данных по WS
 - [x] Сделать специфичные для poloniex типы для парсинга данных из WS
 - [x] Скопировать из ТЗ универсальные типы, добавить конверсию из специфичных типов для RT
-- [ ] Сохранять в БД все данные в формате из ТЗ
+- [x] Сохранять в БД все данные в формате из ТЗ
 
 # Изменение в ТЗ
 - ~~`struct VBS` -> "Достаточно заполнить buy_base: quantity"~~
@@ -536,3 +536,98 @@
     - если указан startTime, а endTime не указан, то возвращает limit последних candles
     - т.е. какой бы startTime не указывай, он всё равно последние limit вернёт
     - может попробовать делать наоборот? указывать только endTime?
+
+- Сделал выкачивание KL в обратном порядке
+    - от последних 500, к предпоследним 500
+    - с оганичением в 5000 на каждую пару symbol-interval:
+    ```rust
+    Downloaded 500 klines, symbol: BTC_USDT, interval: "1m", start: 2025-02-06T14:36:00Z, end: 2025-02-06T22:55:59.999Z
+    Downloaded 500 klines, symbol: BTC_USDT, interval: "1m", start: 2025-02-06T06:16:00Z, end: 2025-02-06T14:35:59.999Z
+    Downloaded 500 klines, symbol: BTC_USDT, interval: "1m", start: 2025-02-05T21:56:00Z, end: 2025-02-06T06:15:59.999Z
+    Downloaded 500 klines, symbol: BTC_USDT, interval: "1m", start: 2025-02-05T13:36:00Z, end: 2025-02-05T21:55:59.999Z
+    Downloaded 500 klines, symbol: BTC_USDT, interval: "1m", start: 2025-02-05T05:16:00Z, end: 2025-02-05T13:35:59.999Z
+    Downloaded 500 klines, symbol: BTC_USDT, interval: "1m", start: 2025-02-04T20:56:00Z, end: 2025-02-05T05:15:59.999Z
+    Downloaded 500 klines, symbol: BTC_USDT, interval: "1m", start: 2025-02-04T12:36:00Z, end: 2025-02-04T20:55:59.999Z
+    Downloaded 500 klines, symbol: BTC_USDT, interval: "1m", start: 2025-02-04T04:16:00Z, end: 2025-02-04T12:35:59.999Z
+    Downloaded 500 klines, symbol: BTC_USDT, interval: "1m", start: 2025-02-03T19:56:00Z, end: 2025-02-04T04:15:59.999Z
+    Downloaded 500 klines, symbol: BTC_USDT, interval: "1m", start: 2025-02-03T11:36:00Z, end: 2025-02-03T19:55:59.999Z
+    Downloaded 500 klines, symbol: BTC_USDT, interval: "15m", start: 2025-02-01T18:00:00Z, end: 2025-02-06T22:59:59.999Z
+    Downloaded 143 klines, symbol: BTC_USDT, interval: "1h", start: 2025-02-01T00:00:00Z, end: 2025-02-06T22:59:59.999Z
+    Downloaded 6 klines, symbol: BTC_USDT, interval: "1d", start: 2025-02-01T00:00:00Z, end: 2025-02-06T23:59:59.999Z
+    Downloaded 500 klines, symbol: TRX_USDT, interval: "1m", start: 2025-02-06T14:36:00Z, end: 2025-02-06T22:55:59.999Z
+    Downloaded 500 klines, symbol: TRX_USDT, interval: "15m", start: 2025-02-01T18:00:00Z, end: 2025-02-06T22:59:59.999Z
+    Downloaded 143 klines, symbol: TRX_USDT, interval: "1h", start: 2025-02-01T00:00:00Z, end: 2025-02-06T22:59:59.999Z
+    Downloaded 6 klines, symbol: TRX_USDT, interval: "1d", start: 2025-02-01T00:00:00Z, end: 2025-02-06T23:59:59.999Z
+    Downloaded 500 klines, symbol: ETH_USDT, interval: "1m", start: 2025-02-06T14:36:00Z, end: 2025-02-06T22:55:59.999Z
+    Downloaded 500 klines, symbol: ETH_USDT, interval: "15m", start: 2025-02-01T18:00:00Z, end: 2025-02-06T22:59:59.999Z
+    Downloaded 143 klines, symbol: ETH_USDT, interval: "1h", start: 2025-02-01T00:00:00Z, end: 2025-02-06T22:59:59.999Z
+    Downloaded 6 klines, symbol: ETH_USDT, interval: "1d", start: 2025-02-01T00:00:00Z, end: 2025-02-06T23:59:59.999Z
+    Downloaded 500 klines, symbol: DOGE_USDT, interval: "1m", start: 2025-02-06T14:36:00Z, end: 2025-02-06T22:55:59.999Z
+    Downloaded 500 klines, symbol: DOGE_USDT, interval: "15m", start: 2025-02-01T18:00:00Z, end: 2025-02-06T22:59:59.999Z
+    Downloaded 143 klines, symbol: DOGE_USDT, interval: "1h", start: 2025-02-01T00:00:00Z, end: 2025-02-06T22:59:59.999Z
+    Downloaded 6 klines, symbol: DOGE_USDT, interval: "1d", start: 2025-02-01T00:00:00Z, end: 2025-02-06T23:59:59.999Z
+    Downloaded 500 klines, symbol: BCH_USDT, interval: "1m", start: 2025-02-06T14:36:00Z, end: 2025-02-06T22:55:59.999Z
+    Downloaded 500 klines, symbol: BCH_USDT, interval: "15m", start: 2025-02-01T18:00:00Z, end: 2025-02-06T22:59:59.999Z
+    Downloaded 143 klines, symbol: BCH_USDT, interval: "1h", start: 2025-02-01T00:00:00Z, end: 2025-02-06T22:59:59.999Z
+    Downloaded 6 klines, symbol: BCH_USDT, interval: "1d", start: 2025-02-01T00:00:00Z, end: 2025-02-06T23:59:59.999Z
+    Downloaded 10245 klines. Storage has 10245 klines.
+    ```
+    - Остаётся, конечно, вопрос, а нужны ли вообще 1-минутные KL 2-3 месячной давности...
+
+- Получаем по WS новые KL и RT, сохраняем их в монгу
+    - лог
+    ```rust
+    WS server sent event: Subscribe { channel: "candles_day_1" }
+    WS server sent event: Subscribe { channel: "candles_hour_1" }
+    WS server sent event: Subscribe { channel: "candles_minute_1" }
+    WS server sent event: Subscribe { channel: "candles_minute_15" }
+    WS server sent event: Subscribe { channel: "trades" }
+    New recent trades: [RecentTrade { tid: "315898567", pair: "DOGE_USDT", price: "0.250016", amount: "27.469007904", side: "buy", timestamp: 1738888942023 }]
+    New recent trades: [RecentTrade { tid: "315898568", pair: "DOGE_USDT", price: "0.250016", amount: "26.628954144", side: "buy", timestamp: 1738888942025 }]
+    New recent trades: [RecentTrade { tid: "315898569", pair: "DOGE_USDT", price: "0.250016", amount: "27.469007904", side: "buy", timestamp: 1738888942025 }]
+    New recent trades: [RecentTrade { tid: "315898570", pair: "DOGE_USDT", price: "0.250016", amount: "12.060521824", side: "buy", timestamp: 1738888942025 }]
+    New recent trades: [RecentTrade { tid: "315898571", pair: "DOGE_USDT", price: "0.250016", amount: "27.469007904", side: "sell", timestamp: 1738888942036 }]
+    New recent trades: [RecentTrade { tid: "315898572", pair: "DOGE_USDT", price: "0.250016", amount: "41.880930208", side: "buy", timestamp: 1738888942036 }]
+    New recent trades: [RecentTrade { tid: "315898573", pair: "DOGE_USDT", price: "0.250016", amount: "57.6036864", side: "sell", timestamp: 1738888942043 }]
+    New recent trades: [RecentTrade { tid: "315898574", pair: "DOGE_USDT", price: "0.250016", amount: "78.328512704", side: "sell", timestamp: 1738888942054 }]
+    New recent trades: [RecentTrade { tid: "112284313", pair: "ETH_USDT", price: "2700.82", amount: "326.07540024", side: "sell", timestamp: 1738888942090 }]
+    New recent trades: [RecentTrade { tid: "112284314", pair: "ETH_USDT", price: "2700.82", amount: "137.25837322", side: "buy", timestamp: 1738888942094 }]
+    New recent trades: [RecentTrade { tid: "112284315", pair: "ETH_USDT", price: "2700.82", amount: "326.07540024", side: "sell", timestamp: 1738888942094 }]
+    New recent trades: [RecentTrade { tid: "122249757", pair: "BCH_USDT", price: "318.6", amount: "49.0395492", side: "buy", timestamp: 1738888942156 }]
+    New klines: [Kline { pair: "ETH_USDT", time_frame: "1m", o: 2700.27, h: 2702.28, l: 2699.95, c: 2700.82, utc_begin: 1738888920000, volume_bs: VBS { buy_base: 1.836918, sell_base: 0.0, buy_quote: 4961.77843053, sell_quote: 0.0 } }]
+    New klines: [Kline { pair: "TRX_USDT", time_frame: "1m", o: 0.23264, h: 0.23265, l: 0.23259, c: 0.23261, utc_begin: 1738888920000, volume_bs: VBS { buy_base: 30636.89, sell_base: 0.0, buy_quote: 7126.79129776, sell_quote: 0.0 } }]
+    New klines: [Kline { pair: "ETH_USDT", time_frame: "15m", o: 2709.45, h: 2715.03, l: 2695.19, c: 2700.82, utc_begin: 1738888200000, volume_bs: VBS { buy_base: 95.286661, sell_base: 0.0, buy_quote: 257711.64338665, sell_quote: 0.0 } }]
+    New klines: [Kline { pair: "TRX_USDT", time_frame: "15m", o: 0.23261, h: 0.2329, l: 0.2324, c: 0.23261, utc_begin: 1738888200000, volume_bs: VBS { buy_base: 277959.998, sell_base: 0.0, buy_quote: 64671.73773505, sell_quote: 0.0 } }]
+    New klines: [Kline { pair: "ETH_USDT", time_frame: "1h", o: 2687.93, h: 2716.37, l: 2686.03, c: 2700.82, utc_begin: 1738886400000, volume_bs: VBS { buy_base: 268.514666, sell_base: 0.0, buy_quote: 726154.09120705, sell_quote: 0.0 } }]
+    New klines: [Kline { pair: "TRX_USDT", time_frame: "1h", o: 0.23164, h: 0.2329, l: 0.23162, c: 0.23261, utc_begin: 1738886400000, volume_bs: VBS { buy_base: 2240773.507, sell_base: 0.0, buy_quote: 520661.81376926, sell_quote: 0.0 } }]
+    New klines: [Kline { pair: "ETH_USDT", time_frame: "1d", o: 2687.93, h: 2716.37, l: 2686.03, c: 2700.82, utc_begin: 1738886400000, volume_bs: VBS { buy_base: 268.514666, sell_base: 0.0, buy_quote: 726154.09120705, sell_quote: 0.0 } }]
+    New klines: [Kline { pair: "TRX_USDT", time_frame: "1d", o: 0.23164, h: 0.2329, l: 0.23162, c: 0.23261, utc_begin: 1738886400000, volume_bs: VBS { buy_base: 2240773.507, sell_base: 0.0, buy_quote: 520661.81376926, sell_quote: 0.0 } }]
+    New klines: [Kline { pair: "DOGE_USDT", time_frame: "1m", o: 0.250022, h: 0.250074, l: 0.249953, c: 0.250016, utc_begin: 1738888920000, volume_bs: VBS { buy_base: 36432.053, sell_base: 0.0, buy_quote: 9108.552903133, sell_quote: 0.0 } }]
+    New klines: [Kline { pair: "DOGE_USDT", time_frame: "15m", o: 0.250866, h: 0.251558, l: 0.249501, c: 0.250016, utc_begin: 1738888200000, volume_bs: VBS { buy_base: 1097531.519, sell_base: 0.0, buy_quote: 274902.377813602, sell_quote: 0.0 } }]
+    New klines: [Kline { pair: "DOGE_USDT", time_frame: "1h", o: 0.247898, h: 0.251848, l: 0.247574, c: 0.250016, utc_begin: 1738886400000, volume_bs: VBS { buy_base: 4291415.952, sell_base: 0.0, buy_quote: 1074478.280878412, sell_quote: 0.0 } }]
+    New klines: [Kline { pair: "DOGE_USDT", time_frame: "1d", o: 0.247898, h: 0.251848, l: 0.247574, c: 0.250016, utc_begin: 1738886400000, volume_bs: VBS { buy_base: 4291415.952, sell_base: 0.0, buy_quote: 1074478.280878412, sell_quote: 0.0 } }]
+    New klines: [Kline { pair: "BCH_USDT", time_frame: "1m", o: 318.25, h: 318.67, l: 318.25, c: 318.6, utc_begin: 1738888920000, volume_bs: VBS { buy_base: 6.512506, sell_base: 0.0, buy_quote: 2074.10257739, sell_quote: 0.0 } }]
+    New klines: [Kline { pair: "BCH_USDT", time_frame: "15m", o: 319.11, h: 319.73, l: 317.75, c: 318.6, utc_begin: 1738888200000, volume_bs: VBS { buy_base: 190.720458, sell_base: 0.0, buy_quote: 60777.14480149, sell_quote: 0.0 } }]
+    New klines: [Kline { pair: "BCH_USDT", time_frame: "1h", o: 316.07, h: 319.82, l: 315.75, c: 318.6, utc_begin: 1738886400000, volume_bs: VBS { buy_base: 660.870036, sell_base: 0.0, buy_quote: 210535.05046351, sell_quote: 0.0 } }]
+    New klines: [Kline { pair: "BCH_USDT", time_frame: "1d", o: 316.07, h: 319.82, l: 315.75, c: 318.6, utc_begin: 1738886400000, volume_bs: VBS { buy_base: 660.870036, sell_base: 0.0, buy_quote: 210535.05046351, sell_quote: 0.0 } }]
+    ```
+    - монга
+    ```
+    > show collections
+    klines
+    recent_trades
+    > db.klines.count()
+    10260
+    > db.recent_trades.count()
+    96
+    
+    > db.klines.find()
+    { "_id" : ObjectId("67a556dc8668dda4a21b1117"), "pair" : "BTC_USDT", "time_frame" : "1m", "o" : 96972.75, "h" : 97018.23, "l" : 96940.59, "c" : 96964.21, "utc_begin" : NumberLong("1738858980000"), "volume_bs" : { "buy_base" : 0.561613, "sell_base" : 0.24809599999999998, "buy_quote" : 54462.99, "sell_quote" : 24059.799999999996 } }
+    { "_id" : ObjectId("67a556dc8668dda4a21b1118"), "pair" : "BTC_USDT", "time_frame" : "1m", "o" : 96950.14, "h" : 96982.26, "l" : 96920.5, "c" : 96981.02, "utc_begin" : NumberLong("1738859040000"), "volume_bs" : { "buy_base" : 0.443164, "sell_base" : 0.40737999999999996, "buy_quote" : 42963.55, "sell_quote" : 39496.84999999999 } }
+    { "_id" : ObjectId("67a556dc8668dda4a21b1119"), "pair" : "BTC_USDT", "time_frame" : "1m", "o" : 96979.23, "h" : 97056.76, "l" : 96979.23, "c" : 97037.8, "utc_begin" : NumberLong("1738859100000"), "volume_bs" : { "buy_base" : 0.333243, "sell_base" : 0.35223999999999994, "buy_quote" : 32325.71, "sell_quote" : 34169.950000000004 } }
+
+    > db.recent_trades.find()
+    { "_id" : ObjectId("67a556ee8668dda4a21b392b"), "tid" : "315898567", "pair" : "DOGE_USDT", "price" : "0.250016", "amount" : "27.469007904", "side" : "buy", "timestamp" : NumberLong("1738888942023") }
+    { "_id" : ObjectId("67a556ee8668dda4a21b392c"), "tid" : "315898568", "pair" : "DOGE_USDT", "price" : "0.250016", "amount" : "26.628954144", "side" : "buy", "timestamp" : NumberLong("1738888942025") }
+    { "_id" : ObjectId("67a556ee8668dda4a21b392d"), "tid" : "315898569", "pair" : "DOGE_USDT", "price" : "0.250016", "amount" : "27.469007904", "side" : "buy", "timestamp" : NumberLong("1738888942025") }
+    ```

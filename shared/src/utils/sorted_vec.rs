@@ -110,6 +110,10 @@ impl<K: Ord, V> SortedVec<K, V> {
     pub fn keys(&self) -> impl Iterator<Item = &K> {
         self.inner.iter().map(|(k, _)| k)
     }
+
+    pub fn iter(&self) -> impl Iterator<Item = &(K, V)> {
+        self.inner.iter()
+    }
 }
 
 struct EntryInner {

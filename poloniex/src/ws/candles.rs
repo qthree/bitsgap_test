@@ -1,12 +1,11 @@
 use anyhow::Context;
 use bitsgap_shared::{
-    interval::DatabaseIntervals,
+    interval::{DatabaseIntervals, Interval},
     records::kline::{Kline, VBS},
     utils::Has,
 };
 use let_clone::let_clone;
 
-use super::intervals::WsCandlesChannels;
 use crate::units::{PxCount, PxPrice, PxSymbol, PxTimestamp, PxUnits};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
@@ -40,9 +39,9 @@ pub struct CandlesMessage {
 
 impl CandlesMessage {
     // TODO: refactor into trait, something like `ToInternal`
-    pub fn kline<C: Has<DatabaseIntervals> + Has<WsCandlesChannels>>(
+    pub fn kline<C: Has<DatabaseIntervals>>(
         &self,
-        channel: &str,
+        interval: Interval,
         context: &C,
     ) -> anyhow::Result<Kline> {
         let Self {
@@ -56,11 +55,6 @@ impl CandlesMessage {
             open,
             ..
         } = self;
-
-        let interval = context
-            .give(WsCandlesChannels)
-            .to_interval(channel)
-            .context("convert WS channel name to interval")?;
 
         let time_frame = context
             .give(DatabaseIntervals)

@@ -9,7 +9,7 @@ impl ValueLabel for WsCandlesChannels {
 }
 
 // TOOD: load from config
-pub fn ws_candles_channels() -> anyhow::Result<IntervalsDict> {
+pub fn all_ws_candles_channels() -> anyhow::Result<IntervalsDict> {
     IntervalsDict::default()
         .with(
             IntervalKind::Minute,
@@ -37,4 +37,17 @@ pub fn ws_candles_channels() -> anyhow::Result<IntervalsDict> {
         )?
         .with(IntervalKind::Week, [(1, "candles_week_1")])?
         .with(IntervalKind::Month, [(1, "candles_month_1")])
+}
+
+pub fn supported_ws_candles_channels(
+    supported_intervals: &IntervalsDict,
+) -> anyhow::Result<IntervalsDict> {
+    let all = all_ws_candles_channels()?;
+    let mut res = IntervalsDict::default();
+    for (interval, alias) in all.iter() {
+        if supported_intervals.to_alias(interval).is_some() {
+            res.add(interval, alias.to_string())?;
+        }
+    }
+    Ok(res)
 }
