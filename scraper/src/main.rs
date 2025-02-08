@@ -6,7 +6,7 @@ use bitsgap_poloniex::{
     ws::{channels::Channel, intervals::WsCandlesChannels},
 };
 use bitsgap_shared::{
-    ApiConfig, ApiFactory, AuthMethod,
+    ApiConfig, ApiFactory, AuthMethod, HttpConfig,
     utils::{Has, time::timestamp_parse},
 };
 use clap::Parser;
@@ -31,6 +31,8 @@ struct Config {
     /// Download KL limit per interval
     #[arg(long = "download-limit")]
     download_limit_per_interval: Option<u32>,
+    #[clap(flatten)]
+    http_config: HttpConfig,
 }
 
 #[tokio::main]
@@ -45,6 +47,7 @@ async fn main() -> anyhow::Result<()> {
         mongodb_uri,
         since,
         download_limit_per_interval,
+        http_config,
     } = Config::parse();
     let since = timestamp_parse(&since)?;
 
@@ -56,6 +59,7 @@ async fn main() -> anyhow::Result<()> {
         storage,
         since,
         download_limit_per_interval,
+        http_config,
     )
     .await
 }
@@ -66,6 +70,7 @@ async fn scrap_poloniex(
     storage: Storage,
     since: u64,
     download_limit_per_interval: Option<u32>,
+    http_config: HttpConfig,
 ) -> anyhow::Result<()> {
     // TODO: move to config
     let base_url = "https://api.poloniex.com"
@@ -73,7 +78,7 @@ async fn scrap_poloniex(
         .context("parse exchange api url")?;
 
     let context = PoloniexContext::init(true).context("init poloniex context")?;
-    let requester = ApiFactory::new().make_requester(
+    let requester = ApiFactory::init(http_config)?.make_requester(
         ApiConfig {
             base_url,
             auth: AuthMethod::HmacSha256 {

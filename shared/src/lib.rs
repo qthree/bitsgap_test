@@ -1,9 +1,12 @@
-use std::{any::type_name, sync::Arc};
+use std::{any::type_name, sync::Arc, time::Duration};
 
 use anyhow::Context;
 use reqwest::{Url, header::CONTENT_TYPE};
 use serde::de::DeserializeOwned;
-use utils::url::{BuildUrl, UrlBuilder};
+use utils::{
+    time::SpanDuration,
+    url::{BuildUrl, UrlBuilder},
+};
 
 pub mod auth;
 pub mod interval;
@@ -17,12 +20,7 @@ pub struct ApiFactory {
     // but can we use same reqwest client for different end-users of the service? Should be ok if we don't use reqwest::ClientBuilder::cookie_store or cookie_provider
     // this allows as to use only one reqwest client per app
     client: reqwest::Client,
-}
-
-impl Default for ApiFactory {
-    fn default() -> Self {
-        Self::new()
-    }
+    http_config: HttpConfig,
 }
 
 #[derive(Debug)]
@@ -31,16 +29,43 @@ pub struct ApiConfig {
     pub auth: AuthMethod,
 }
 
+#[derive(Debug, Clone, clap::Args)]
+pub struct HttpConfig {
+    /// HTTP request to API fails if no bytes were read for this duration
+    #[clap(long, default_value = "15s")]
+    pub http_read_timeout: SpanDuration,
+    /// how long to wait after failed HTTP request before next attempt
+    #[clap(long, default_value = "5s")]
+    pub http_retry_after: SpanDuration,
+    /// HTTP request retry attempts to make
+    #[clap(long, default_value_t = 3)]
+    pub http_retry_attempts: u32,
+}
+
+impl Default for HttpConfig {
+    fn default() -> Self {
+        Self {
+            http_read_timeout: Duration::from_secs(15).into(),
+            http_retry_after: Duration::from_secs(5).into(),
+            http_retry_attempts: 5,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum AuthMethod {
     HmacSha256 { api_key: String, secret_key: String },
 }
 
 impl ApiFactory {
-    pub fn new() -> Self {
-        Self {
-            client: reqwest::Client::new(),
-        }
+    pub fn init(http_config: HttpConfig) -> anyhow::Result<Self> {
+        Ok(Self {
+            client: reqwest::Client::builder()
+                .read_timeout(http_config.http_read_timeout.into())
+                .build()
+                .context("build http client")?,
+            http_config,
+        })
     }
 
     pub fn make_requester<C>(
@@ -53,6 +78,7 @@ impl ApiFactory {
             config: config.into(),
             client: self.client.clone(),
             context,
+            http_config: self.http_config.clone(),
             //headers,
         }
     }
@@ -63,6 +89,7 @@ pub struct ApiRequester<C> {
     config: Arc<ApiConfig>,
     client: reqwest::Client,
     context: C,
+    http_config: HttpConfig,
     //headers: HeaderMap,
 }
 
@@ -75,13 +102,11 @@ impl<C> ApiRequester<C> {
         UrlBuilder::build(&self.config.base_url, with, &self.context)
     }
 
-    async fn send_request<B: BuildUrl<C>>(
+    async fn send_request(
         &self,
         method: reqwest::Method,
-        build_url: &B,
+        url: Url,
     ) -> anyhow::Result<reqwest::Response> {
-        let url = self.build_url(build_url).context("build url")?;
-
         let mut req = self
             .client
             .request(method, url)
@@ -95,8 +120,8 @@ impl<C> ApiRequester<C> {
         self.client.execute(req).await.context("execute request")
     }
 
-    async fn get_string<B: BuildUrl<C>>(&self, build_url: &B) -> anyhow::Result<String> {
-        let res = self.send_request(reqwest::Method::GET, build_url).await?;
+    async fn get_string(&self, url: Url) -> anyhow::Result<String> {
+        let res = self.send_request(reqwest::Method::GET, url).await?;
         // we don't use Response::json to separate different kinds of errors
         res.text().await.context("receive JSON response")
     }
@@ -105,7 +130,22 @@ impl<C> ApiRequester<C> {
         &self,
         build_url: &B,
     ) -> anyhow::Result<T> {
-        let json = self.get_string(build_url).await?;
+        let url = self.build_url(build_url).context("build url")?;
+
+        let mut attempts = self.http_config.http_retry_attempts;
+        let retry_after = self.http_config.http_retry_after;
+        let json = loop {
+            match self.get_string(url.clone()).await {
+                Ok(ok) => break ok,
+                Err(err) if attempts > 0 => {
+                    log::error!("HTTP GET {url:?}: {err:#}");
+                    log::info!("{attempts} attempts left, waiting for {retry_after} before retry");
+                    attempts -= 1;
+                    continue;
+                }
+                Err(err) => return Err(err),
+            }
+        };
         let res = serde_json::from_str(&json);
         if res.is_err() {
             log::error!("Can't parse json as {}: {json}", type_name::<T>());
